@@ -8,6 +8,63 @@ namespace MaterialSkin.Controls
 {
     public class MaterialListView : ListView, IMaterialControl
     {
+        //++Header free area set color
+        public const int WM_PAINT = 0x000F;
+        public const int LVM_FIRST = 0x1000;
+        public const int LVM_GETHEADER = (LVM_FIRST + 31);
+
+        public const int HDM_FIRST = 0x1200;
+        public const int HDM_GETITEMCOUNT = (HDM_FIRST + 0);
+        public const int HDM_GETITEMRECT = (HDM_FIRST + 7);
+
+        [DllImport("User32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern int SendMessage(IntPtr hWnd, uint msg, int wParam, IntPtr lParam);
+
+        [DllImport("User32.dll", SetLastError = true, CharSet = CharSet.Auto)]
+        public static extern int SendMessage(IntPtr hWnd, uint msg, int wParam, ref RECT lParam);
+
+        [DllImport("User32.dll", SetLastError = true)]
+        public static extern bool GetClientRect(IntPtr hWnd, out RECT lpRect);
+
+        [DllImport("User32", ExactSpelling = true, CharSet = CharSet.Auto)]
+        public static extern IntPtr GetDC(IntPtr hWnd);
+
+        [DllImport("User32", ExactSpelling = true, CharSet = CharSet.Auto)]
+        public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct RECT
+        {
+            public int left;
+            public int top;
+            public int right;
+            public int bottom;
+            public RECT(int Left, int Top, int Right, int Bottom)
+            {
+                left = Left;
+                top = Top;
+                right = Right;
+                bottom = Bottom;
+            }
+        }
+
+        public delegate int SUBCLASSPROC(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam, IntPtr uIdSubclass, uint dwRefData);
+
+        [DllImport("Comctl32.dll", SetLastError = true)]
+        public static extern bool SetWindowSubclass(IntPtr hWnd, SUBCLASSPROC pfnSubclass, uint uIdSubclass, uint dwRefData);
+
+        [DllImport("Comctl32.dll", SetLastError = true)]
+        public static extern int DefSubclassProc(IntPtr hWnd, uint uMsg, IntPtr wParam, IntPtr lParam);
+
+        private SUBCLASSPROC SubClassDelegate = null;
+
+
+        private IntPtr hWndHeader = IntPtr.Zero;
+        //--Header free area set color
+        
+        
+        
+        
         [Browsable(false)]
         public int Depth { get; set; }
         [Browsable(false)]
@@ -141,7 +198,14 @@ namespace MaterialSkin.Controls
         protected override void OnCreateControl()
         {
             base.OnCreateControl();
-
+            
+            //++Header free area set color
+            hWndHeader = (IntPtr)SendMessage(this.Handle, LVM_GETHEADER, 0, IntPtr.Zero);
+            SubClassDelegate = WindowSubClass;
+            if (SubClassDelegate != null)
+                SetWindowSubclass(hWndHeader, SubClassDelegate, 0, 0);
+             //--Header free area set color   
+                
             // This hack tries to apply the Roboto (24) font to all ListViewItems in this ListView
             // It only succeeds if the font is installed on the system.
             // Otherwise, a default sans serif font is used.
